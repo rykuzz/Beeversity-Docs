@@ -1,0 +1,119 @@
+<apex:component controller="InvoiceComponentController" access="global">
+    <apex:attribute name="oppId" description="ID of the Opportunity/Application" type="Id" assignTo="{!opportunityId}"/>
+
+    <style type="text/css">
+        body { font-family: sans-serif; }
+        .invoice-box { max-width: 800px; margin: auto; padding: 30px; border: 1px solid #eee; box-shadow: 0 0 10px rgba(0, 0, 0, .15); font-size: 16px; line-height: 24px; color: #555; }
+        .invoice-box table { width: 100%; line-height: inherit; text-align: left; }
+        .invoice-box table td { padding: 5px; vertical-align: top; }
+        .invoice-box table tr.top table td { padding-bottom: 20px; }
+        .invoice-box table tr.top table td.title { font-size: 45px; line-height: 45px; color: #333; }
+        .invoice-box table tr.information table td { padding-bottom: 40px; }
+        .invoice-box table tr.heading td { background: #003366; color: #fff; border-bottom: 1px solid #ddd; font-weight: bold; }
+        .invoice-box table tr.item td{ border-bottom: 1px solid #eee; }
+        .invoice-box table tr.item.last td { border-bottom: none; }
+        .invoice-box table tr.total td:nth-child(2) { border-top: 2px solid #003366; font-weight: bold; }
+        .text-right { text-align: right; }
+    </style>
+
+    <div class="invoice-box">
+        <table>
+            <tr class="top">
+                <td colspan="2">
+                    <table>
+                        <tr>
+                            <td class="title">
+                                <img src="https://0496efc113.imgdist.com/public/users/BeeFree/beefree-1815f9f1-35ba-413d-977a-2aff931802ad/LogoPerusahaan.png" style="width:100%; max-width:250px;"/>
+                            </td>
+                            <td class="text-right">
+                                <strong>Tagihan Biaya Pendidikan</strong><br/>
+                                Nomor Pendaftaran: {!opp.Id}<br/>
+                                Tanggal Terbit: <apex:outputText value="{0, date, dd MMMM yyyy}"><apex:param value="{!TODAY()}"/></apex:outputText><br/>
+                                Batas Pembayaran: <apex:outputText value="{0, date, dd MMMM yyyy}"><apex:param value="{!opp.CloseDate}"/></apex:outputText>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+
+            <tr class="information">
+                <td colspan="2">
+                    <table>
+                        <tr>
+                            <td>
+                                <strong>Beeversity</strong><br/>
+                                Jl. Raya Kb. Jeruk No.27, RT.1/RW.9, Kemanggisan, Kec. Palmerah<br/>
+                                Jakarta Barat, 11530<br/>
+                                finance@beeversity.ac.id
+                            </td>
+                            <td class="text-right">
+                                <strong>Kepada Calon Mahasiswa:</strong><br/>
+                                <strong>{!primaryContact.Name}</strong><br/>
+                                {!primaryContact.MailingStreet}<br/>
+                                {!primaryContact.MailingCity}, {!primaryContact.MailingState} {!primaryContact.MailingPostalCode}
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+
+            <tr>
+                <td colspan="2" style="padding-bottom: 20px;">
+                    <p>Selamat! Kami dengan gembira menginformasikan bahwa Anda telah diterima di <strong>Beeversity</strong>. Berikut adalah rincian biaya pendidikan untuk memulai perjalanan akademik Anda.</p>
+                </td>
+            </tr>
+
+            <tr class="heading">
+                <td>Deskripsi Biaya</td>
+                <td class="text-right">Jumlah</td>
+            </tr>
+            
+            <apex:repeat value="{!opp.OpportunityLineItems}" var="line">
+                <tr class="item">
+                    <td>
+                        {!line.PricebookEntry.Product2.Name}
+                        <apex:outputPanel rendered="{!line.Quantity > 1}">
+                            <br/><small><i>({!line.Quantity} SKS @ 
+                            
+                            <apex:outputText value="Rp {0,number,###,###,##0}">
+                                <apex:param value="{!line.UnitPrice}"/>
+                            </apex:outputText>)
+
+                            </i></small>
+                        </apex:outputPanel>
+                    </td>
+                    <td class="text-right">
+                        
+                        <apex:outputText value="Rp {0,number,###,###,##0}">
+                            <apex:param value="{!line.TotalPrice}"/>
+                        </apex:outputText>
+
+                    </td>
+                </tr>
+            </apex:repeat>
+
+            <tr class="total">
+                <td></td>
+                <td class="text-right">
+                   
+                   <strong>Total Biaya Semester Awal: 
+                       <apex:outputText value="Rp {0,number,###,###,##0}">
+                           <apex:param value="{!opp.Amount}"/>
+                       </apex:outputText>
+                   </strong>
+
+                </td>
+            </tr>
+
+            <tr>
+                <td colspan="2" style="padding-top: 30px;">
+                    <strong>Petunjuk Pembayaran:</strong><br/>
+                    Mohon lakukan pembayaran ke salah satu rekening virtual account di bawah ini dengan menggunakan <strong>Nomor Pendaftaran</strong> Anda sebagai nomor referensi.<br/><br/>
+                    <strong>Bank Mandiri Virtual Account:</strong> 88088xxxxxxxxxx<br/>
+                    <strong>BCA Virtual Account:</strong> 3901xxxxxxxxxx<br/><br/>
+                    Setelah melakukan pembayaran, status pendaftaran Anda akan otomatis diperbarui. Harap simpan bukti pembayaran Anda.
+                </td>
+            </tr>
+        </table>
+    </div>
+</apex:component>

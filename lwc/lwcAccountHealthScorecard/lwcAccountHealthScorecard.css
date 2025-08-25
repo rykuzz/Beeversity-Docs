@@ -1,0 +1,13 @@
+.large-font {
+    font-size: 20px !important;
+}
+
+/* Optional: Jika ingin memperbesar hanya angka score */
+.score-number.large-font {
+    font-size: 24px !important;
+    font-weight: bold;
+}
+
+.score-percent.large-font {
+    font-size: 18px !important;
+}

@@ -1,0 +1,187 @@
+<apex:page controller="TaskHeatmapController" showHeader="false" standardStylesheets="false" sidebar="false" applyHtmlTag="false" applyBodyTag="false" docType="html-5.0">
+    <apex:slds />
+    <head>
+        <style>
+            .heatmap-container { display: flex; justify-content: space-around; }
+            .heatmap-day {
+                border: 1px solid #d8dde6;
+                border-radius: .25rem;
+                padding: 1rem;
+                text-align: center;
+                flex-grow: 1;
+                margin: 0 4px;
+                transition: transform 0.2s, box-shadow 0.2s;
+                cursor: pointer;
+            }
+            .heatmap-day:hover {
+                transform: translateY(-5px);
+                box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            }
+            .day-name { font-size: 0.8rem; font-weight: bold; color: #5A5A5A; }
+            .task-count { font-size: 1.5rem; font-weight: bold; }
+            .heatmap-low { background-color: #c9e9c9; }
+            .heatmap-medium { background-color: #ffe8a3; }
+            .heatmap-high { background-color: #ffb3b3; }
+            .date-navigator { margin-bottom: 1rem; text-align: center; }
+            .week-display { margin: 0 1rem; font-weight: bold; display: inline-block; width: 180px; vertical-align: middle; }
+            .heatmap-container.loading { opacity: 0.5; pointer-events: none; }
+        </style>
+    </head>
+    <body>
+        <div class="slds-scope">
+            <div class="slds-card">
+                <div class="slds-card__header slds-grid">
+                    <header class="slds-media slds-media_center slds-has-flexi-truncate">
+                        <div class="slds-media__figure">
+                            <span class="slds-icon_container slds-icon-standard-task" title="Tasks">
+                                <svg class="slds-icon slds-icon_small" aria-hidden="true">
+                                    <use href="{!URLFOR($Asset.SLDS, 'assets/icons/standard-sprite/svg/symbols.svg#task')}"></use>
+                                </svg>
+                            </span>
+                        </div>
+                        <div class="slds-media__body">
+                            <h2 class="slds-card__header-title">
+                                <a href="javascript:void(0);" class="slds-card__header-link slds-truncate" title="Weekly Task Heatmap">
+                                    <span>Weekly Task</span>
+                                </a>
+                            </h2>
+                        </div>
+                    </header>
+                </div>
+                <div class="slds-card__body slds-card__body_inner">
+                    <div class="date-navigator">
+                        <button class="slds-button slds-button_neutral" onclick="changeWeek(-7)">◀ Minggu Lalu</button>
+                        <span class="week-display" id="week-display-span"></span>
+                        <button class="slds-button slds-button_neutral" onclick="changeWeek(7)">Minggu Depan ▶</button>
+                    </div>
+                    <div id="heatmap-container" class="heatmap-container">
+                        <div class="slds-spinner_container">
+                            <div role="status" class="slds-spinner slds-spinner_medium">
+                                <span class="slds-assistive-text">Loading</span>
+                                <div class="slds-spinner__dot-a"></div>
+                                <div class="slds-spinner__dot-b"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="task-modal" style="display: none;">
+                <section role="dialog" tabindex="-1" class="slds-modal slds-fade-in-open">
+                    <div class="slds-modal__container">
+                        <header class="slds-modal__header">
+                            <button class="slds-button slds-button_icon slds-modal__close slds-button_icon-inverse" title="Close" onclick="closeModal()">
+                                <svg class="slds-button__icon slds-button__icon_large"><use href="{!URLFOR($Asset.SLDS, 'assets/icons/utility-sprite/svg/symbols.svg#close')}"></use></svg>
+                            </button>
+                            <h2 id="modal-title" class="slds-modal__title slds-hyphenate">Daftar Tugas</h2>
+                        </header>
+                        <div class="slds-modal__content slds-p-around_medium" id="modal-content"></div>
+                    </div>
+                </section>
+                <div class="slds-backdrop slds-backdrop_open"></div>
+            </div>
+        </div>
+
+        <script>
+            let currentStartDate = new Date();
+            let dayOfWeek = currentStartDate.getDay();
+            let diff = currentStartDate.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1); 
+            currentStartDate.setDate(diff);
+            currentStartDate.setHours(0, 0, 0, 0);
+
+
+
+            function fetchHeatmapData(startDate) {
+                const container = document.getElementById('heatmap-container');
+                container.innerHTML = `<div class="slds-spinner_container"><div role="status" class="slds-spinner slds-spinner_medium"><div class="slds-spinner__dot-a"></div><div class="slds-spinner__dot-b"></div></div></div>`;
+                container.classList.add('loading');
+
+                TaskHeatmapController.getWeeklyTaskData(
+                    startDate.getTime(), 
+                    function(result, event) {
+                        if (event.status) {
+                            let html = '';
+                            result.forEach(day => {
+                                html += `
+                                    <div class="heatmap-day ${day.heatmapClass}" 
+                                         onclick="showTasksForDay(${day.dateMillis}, '${day.dayName}')" 
+                                         title="${day.taskCount} tugas pada hari ${day.dayName}">
+                                        <div class="day-name">${day.dayName}</div>
+                                        <div class="task-count">${day.taskCount}</div>
+                                    </div>
+                                `;
+                            });
+                            container.innerHTML = html;
+                            container.classList.remove('loading');
+                            const endDate = new Date(startDate);
+                            endDate.setDate(startDate.getDate() + 6);
+                            document.getElementById('week-display-span').innerText = 
+                                `${startDate.toLocaleDateString('id-ID', {day:'numeric', month:'short'})} - ${endDate.toLocaleDateString('id-ID', {day:'numeric', month:'short', year:'numeric'})}`;
+                        } else {
+                            console.error(event.message);
+                            container.innerHTML = `<p style='color:red;'>Gagal memuat data.</p>`;
+                        }
+                    }, 
+                    { escape: true }
+                );
+            }
+
+            function changeWeek(days) {
+                currentStartDate.setDate(currentStartDate.getDate() + days);
+                fetchHeatmapData(currentStartDate);
+            }
+        
+            function showTasksForDay(dateMillis, dayName) {
+                const modal = document.getElementById('task-modal');
+                const modalTitle = document.getElementById('modal-title');
+                const modalContent = document.getElementById('modal-content');
+                const dateObj = new Date(dateMillis);
+
+                modalTitle.innerText = `Tugas untuk Hari ${dayName}, ${dateObj.toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'})}`;
+                modalContent.innerHTML = `<div class="slds-spinner_container"><div role="status" class="slds-spinner slds-spinner_medium"><span class="slds-assistive-text">Loading...</span><div class="slds-spinner__dot-a"></div><div class="slds-spinner__dot-b"></div></div></div>`;
+                modal.style.display = 'block';
+                TaskHeatmapController.getTasksForDate(
+                    dateMillis,
+                    function(result, event) {
+                        if (event.status) {
+                            let contentHtml = '<ul class="slds-list_dotted">';
+                            if (result.length > 0) {
+                                result.forEach(task => {
+                                    let whoName = task.Who ? task.Who.Name : '';
+                                    let whatName = task.What ? task.What.Name : '';
+                                    let relatedTo = whoName || whatName;
+                                    contentHtml += `
+                                        <li class="slds-p-vertical_small">
+                                            <a href="/${task.Id}" target="_blank" style="text-decoration: none;">
+                                                <strong>${task.Subject}</strong>
+                                            </a>
+                                            <p class="slds-text-body_small slds-m-top_xx-small">
+                                                Status: ${task.Status}
+                                                ${relatedTo ? '<br/>Terkait: ' + relatedTo : ''}
+                                            </p>
+                                        </li>`;
+                                });
+                            } else {
+                                contentHtml += '<li>Tidak ada tugas untuk hari ini.</li>';
+                            }
+                            contentHtml += '</ul>';
+                            modalContent.innerHTML = contentHtml;
+                        } else {
+                            modalContent.innerHTML = `<p style='color:red;'>Gagal memuat detail tugas.</p>`;
+                            console.error(event.message);
+                        }
+                    },
+                    { escape: true }
+                );
+            }
+
+            function closeModal() {
+                document.getElementById('task-modal').style.display = 'none';
+            }
+
+            document.addEventListener('DOMContentLoaded', function() {
+                fetchHeatmapData(currentStartDate);
+            });
+        </script>
+    </body>
+</apex:page>

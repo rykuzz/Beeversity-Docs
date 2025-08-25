@@ -1,0 +1,76 @@
+<apex:page standardController="Campaign"
+    extensions="RoiChartController"
+    showHeader="false"
+    sidebar="false"
+    standardStylesheets="false"
+>
+    <div style="display: flex; align-items: center; justify-content: space-around; width: 100%; font-family: Arial, sans-serif;">
+
+        <div style="position: relative; width: 180px; height: 180px;">
+            <canvas id="roiChartCanvas"></canvas>
+        </div>
+
+        <div style="border-left: 1px solid #ddd; padding-left: 20px; min-width: 220px;">
+            <h3 style="margin: 0 0 10px 0; font-size: 16px; color: #333;">Metrik Kampanye</h3>
+            
+            <p style="margin: 8px 0; font-size: 14px; color: #555;">
+                Biaya Aktual: <br/>
+                <strong style="font-size: 18px; color: #c23934;"> <apex:outputText value="Rp {0,number,###,###,##0}">
+                        <apex:param value="{!campaignCost}"/>
+                    </apex:outputText>
+                </strong>
+            </p>
+
+            <p style="margin: 8px 0; font-size: 14px; color: #555;">
+                Anggaran Biaya: <br/>
+                <strong style="font-size: 16px; color: #333;">
+                    <apex:outputText value="Rp {0,number,###,###,##0}">
+                        <apex:param value="{!budgetedCost}"/>
+                    </apex:outputText>
+                </strong>
+            </p>
+
+            <p style="margin: 8px 0; font-size: 14px; color: #555;">
+                Estimasi Pendapatan: <br/>
+                <strong style="font-size: 16px; color: #0070d2;">
+                    <apex:outputText value="Rp {0,number,###,###,##0}">
+                        <apex:param value="{!expectedRevenue}"/>
+                    </apex:outputText>
+                </strong>
+            </p>
+        </div>
+    </div>
+
+    <script src="{!URLFOR($Resource.ChartJs)}"></script>
+    <script>
+        var roi = {!roiValue};
+        let backgroundColor = 'rgba(255, 99, 132, 0.7)';
+        if (roi >= 0 && roi < 50) { backgroundColor = 'rgba(255, 206, 86, 0.7)'; }
+        else if (roi >= 50) { backgroundColor = 'rgba(75, 192, 192, 0.7)'; }
+        let dataValue = roi >= 0 ? roi : 0;
+        let remainingValue = 200 - dataValue;
+        if (remainingValue < 0) remainingValue = 0;
+        const ctx = document.getElementById('roiChartCanvas').getContext('2d');
+        const roiChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: { datasets: [{ data: [dataValue, remainingValue], backgroundColor: [backgroundColor, 'rgba(0, 0, 0, 0.07)'], borderWidth: 0 }] },
+            options: { responsive: true, maintainAspectRatio: false, rotation: -90, circumference: 180, cutout: '70%', plugins: { legend: { display: false }, tooltip: { enabled: false }}},
+            plugins: [{
+                id: 'doughnutLabel',
+                beforeDraw: (chart) => {
+                    const { width, height, ctx } = chart;
+                    ctx.restore();
+                    const fontSize = (height / 114).toFixed(2);
+                    ctx.font = `bold ${fontSize}em sans-serif`;
+                    ctx.fillStyle = '#555';
+                    ctx.textBaseline = 'middle';
+                    const text = `${roi}%`;
+                    const textX = Math.round((width - ctx.measureText(text).width) / 2);
+                    const textY = height / 1.5;
+                    ctx.fillText(text, textX, textY);
+                    ctx.save();
+                }
+            }]
+        });
+    </script>
+</apex:page>

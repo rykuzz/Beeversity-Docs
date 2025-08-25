@@ -1,0 +1,42 @@
+<template>
+    <lightning-card>
+        <div class={cardClass}>
+            <div class="slds-p-around_medium slds-border_bottom">
+                <div class="slds-grid slds-grid_vertical-align-center slds-grid_align-spread">
+                    <div>
+                        <p class="slds-text-title">Skor Kualitas Data</p>
+                        <p class="score-text slds-text-heading_large">{qualityScore}%</p>
+                    </div>
+                    <div class={ratingClass}>
+                        {rating}
+                    </div>
+                </div>
+            </div>
+
+            <div class="slds-p-around_medium">
+                <lightning-layout multiple-rows="true" pull-to-boundary="small">
+                    <template for:each={fieldChecks} for:item="check">
+                        <lightning-layout-item key={check.label} size="12" small-device-size="6" padding="around-small">
+                            <div class={check.tileClass}>
+                                <div class="slds-media slds-media_center">
+                                    <div class="slds-media__figure">
+                                        <lightning-icon icon-name={check.icon} size="small" variant="inverse"></lightning-icon>
+                                    </div>
+                                    <div class="slds-media__body">
+                                        <p class="slds-text-title_caps">{check.label}</p>
+                                        <p class="slds-text-body_regular slds-truncate" title={check.value}>{check.value}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </lightning-layout-item>
+                    </template>
+                </lightning-layout>
+            </div>
+
+            <div if:true={hasRecommendations} class="slds-p-around_medium slds-border_top recommendation-box">
+                 <lightning-icon icon-name="utility:lightbulb" size="small"></lightning-icon>
+                 <span class="slds-m-left_x-small slds-text-body_small"><b>Rekomendasi:</b> {recommendationText}</span>
+            </div>
+        </div>
+    </lightning-card>
+</template>

@@ -1,0 +1,117 @@
+<aura:component controller="CustomerJourneyController" implements="flexipage:availableForAllPageTypes" access="global" >
+    <aura:attribute name="searchKeyword" type="String" />
+    <aura:attribute name="accountList" type="Account[]" />
+    <aura:attribute name="journeyData" type="Object" />
+    <aura:attribute name="opportunityData" type="Opportunity[]" /> <aura:attribute name="isLoading" type="Boolean" default="false" />
+    <aura:attribute name="error" type="String" />
+    
+    <aura:handler name="change" value="{!v.searchKeyword}" action="{!c.handleSearchChange}" />
+    
+    <lightning:card title="Quick Data Search" iconName="standard:customer_360">
+        
+        <aura:if isTrue="{!v.isLoading}">
+            <lightning:spinner alternativeText="Loading..." size="medium" />
+        </aura:if>
+        
+        <aura:if isTrue="{!not(empty(v.journeyData))}">
+            <div class="slds-p-horizontal_small slds-text-align_right">
+                <lightning:button variant="neutral" label="Cari Lagi" onclick="{!c.resetComponent}" />
+            </div>
+        </aura:if>
+
+        <div class="slds-p-around_medium">
+            <aura:if isTrue="{!empty(v.journeyData)}">
+                <lightning:input
+                    aura:id="search-box"
+                    name="search-box"
+                    label="Ketik Nama Akun untuk Memulai"
+                    type="search"
+                    value="{!v.searchKeyword}"
+                    placeholder="Contoh: PT Jaya Abadi..." />
+
+                <aura:if isTrue="{!not(empty(v.accountList))}">
+                    <ul class="slds-listbox slds-listbox_vertical slds-m-top_small" role="presentation">
+                        <aura:iteration items="{!v.accountList}" var="acc">
+                            <li role="presentation" class="slds-listbox__item">
+                                <div class="slds-media slds-listbox__option slds-listbox__option_entity slds-listbox__option_has-meta clickable" onclick="{!c.handleAccountSelect}" data-recordid="{!acc.Id}">
+                                    <span class="slds-media__figure slds-listbox__option-icon">
+                                        <lightning:icon iconName="standard:account" size="small" />
+                                    </span>
+                                    <span class="slds-media__body">
+                                        <span class="slds-listbox__option-text slds-listbox__option-text_entity">{!acc.Name}</span>
+                                        <span class="slds-listbox__option-meta slds-listbox__option-meta_entity">{!acc.Industry}</span>
+                                    </span>
+                                </div>
+                            </li>
+                        </aura:iteration>
+                    </ul>
+                </aura:if>
+            </aura:if>
+
+            <aura:if isTrue="{!not(empty(v.journeyData))}">
+                <div class="slds-text-heading_large slds-m-bottom_medium">{!v.journeyData.acc.Name}</div>
+
+                <lightning:layout multipleRows="true">
+                    <lightning:layoutItem size="6" padding="around-small">
+                        <div class="slds-box slds-theme_shade">
+                            <h3 class="slds-text-heading_small slds-m-bottom_small">Account Summary</h3>
+                            <p><strong>Industri:</strong> {!v.journeyData.acc.Industry}</p>
+                            <p><strong>Tipe:</strong> {!v.journeyData.acc.Type}</p>
+                            <p><strong>Pemilik:</strong> {!v.journeyData.acc.Owner.Name}</p>
+                        </div>
+                    </lightning:layoutItem>
+                    <lightning:layoutItem size="6" padding="around-small">
+                         <div class="slds-box slds-theme_shade">
+                            <h3 class="slds-text-heading_small slds-m-bottom_small">Lead Origin</h3>
+                            <aura:if isTrue="{!v.journeyData.wasConvertedFromLead}">
+                                <p><strong>Sumber Lead:</strong> {!v.journeyData.originLead.LeadSource}</p>
+                                <p><strong>Tanggal Lead Dibuat:</strong> 
+                                    <lightning:formattedDateTime value="{!v.journeyData.originLead.CreatedDate}" year="numeric" month="long" day="2-digit" />
+                                </p>
+                                <aura:set attribute="else">
+                                    <p><i>Account ini tidak berasal dari konversi Lead.</i></p>
+                                </aura:set>
+                            </aura:if>
+                        </div>
+                    </lightning:layoutItem>
+                </lightning:layout>
+                
+                <div class="slds-box slds-theme_shade slds-m-top_small">
+                    <h3 class="slds-text-heading_small slds-m-bottom_small">Opportunity History</h3>
+                    
+                    <aura:iteration items="{!v.opportunityData}" var="opp">
+                        <div class="slds-box slds-box_small slds-theme_default slds-m-bottom_small">
+                            <lightning:layout verticalAlign="center">
+                                <lightning:layoutItem class="slds-m-right_small">
+                                    <lightning:icon iconName="standard:opportunity" size="medium" />
+                                </lightning:layoutItem>
+                                <lightning:layoutItem class="slds-grow">
+                                    <h3 class="slds-text-heading_small slds-m-bottom_x-small">
+                                        <strong>{!opp.Name}</strong>
+                                    </h3>
+                                    <p class="slds-m-bottom_xx-small">
+                                        Tahap: <lightning:badge label="{!opp.StageName}" />
+                                    </p>
+                                    <p class="slds-m-bottom_xx-small">
+                                        Jumlah: 
+                                        <lightning:formattedNumber value="{!opp.Amount}" style="currency" currencyCode="IDR" />
+                                    </p>
+                                    <p>
+                                        Tanggal Tutup: 
+                                        <lightning:formattedDateTime value="{!opp.CloseDate}" year="numeric" month="long" day="numeric" />
+                                    </p>
+                                </lightning:layoutItem>
+                            </lightning:layout>
+                        </div>
+                    </aura:iteration>
+
+                    <aura:if isTrue="{#empty(v.opportunityData)}">
+                        <div class="slds-p-around_medium slds-text-align_center">
+                            <i>Tidak ada riwayat Opportunity untuk Akun ini.</i>
+                        </div>
+                    </aura:if>
+                </div>
+            </aura:if>
+        </div>
+    </lightning:card>
+</aura:component>

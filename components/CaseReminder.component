@@ -1,0 +1,103 @@
+<apex:component controller="CaseReminderController" access="global">
+
+    <apex:attribute name="caseId" description="ID dari Case yang akan ditampilkan." type="Id" assignTo="{!caseRecordId}"/>
+
+    <style type="text/css">
+        body { font-family: 'Salesforce Sans', Arial, sans-serif; }
+        .container {
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+            border: 1px solid #d8dde6;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .header {
+            background-color: #005290;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        .header h2 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .body {
+            padding: 20px 30px;
+            color: #333;
+            line-height: 1.5;
+        }
+        .case-details {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            margin-bottom: 20px;
+        }
+        .case-details td {
+            padding: 8px 0;
+            border-bottom: 1px solid #e1e5ee;
+        }
+        .case-details td.label {
+            font-weight: bold;
+            width: 120px;
+        }
+        .button {
+            display: inline-block;
+            background-color: #0070d2;
+            color: #ffffff;
+            padding: 12px 20px;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .footer {
+            background-color: #f4f6f9;
+            padding: 20px;
+            text-align: center;
+            font-size: 12px;
+            color: #5e6675;
+        }
+    </style>
+
+    <div class="container">
+        <div class="header">
+            <h2>Peringatan Tindak Lanjut Case</h2>
+        </div>
+        <div class="body">
+            <p>Halo {!caseForEmail.Owner.FirstName},</p>
+            <p>
+                Ini adalah pengingat otomatis bahwa Case di bawah ini belum menerima pembaruan selama lebih dari 2 hari.
+                Mohon segera periksa dan lakukan tindak lanjut yang diperlukan.
+            </p>
+
+            <table class="case-details">
+                <tr>
+                    <td class="label">Nomor Case:</td>
+                    <td>{!caseForEmail.CaseNumber}</td>
+                </tr>
+                <tr>
+                    <td class="label">Subjek:</td>
+                    <td>{!caseForEmail.Subject}</td>
+                </tr>
+                <tr>
+                    <td class="label">Akun:</td>
+                    <td>{!caseForEmail.Account.Name}</td>
+                </tr>
+                <tr>
+                    <td class="label">Update Terakhir:</td>
+                    <td>
+                        <apex:outputText value="{0, date, dd MMMM yyyy HH:mm}">
+                            <apex:param value="{!caseForEmail.LastModifiedDate}" />
+                        </apex:outputText>
+                    </td>
+                </tr>
+            </table>
+
+            <a href="{!LEFT($Api.Partner_Server_URL_260, FIND('/services',$Api.Partner_Server_URL_260))}{!caseForEmail.Id}" class="button">Lihat Case Sekarang</a>
+        </div>
+        <div class="footer">
+            Ini adalah notifikasi otomatis. Mohon untuk tidak membalas email ini.
+        </div>
+    </div>
+
+</apex:component>

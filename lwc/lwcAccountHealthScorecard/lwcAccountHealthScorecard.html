@@ -1,0 +1,145 @@
+<template>
+
+        <h2 slot="title" class="slds-card__header-title">
+            <lightning-icon icon-name="custom:custom96" size="small" class="slds-m-right_x-small"></lightning-icon>
+            Account Health Scorecard
+        </h2>
+        
+        <div class="slds-p-around_medium">
+            <!-- Loading State -->
+            <template if:true={isLoading}>
+                <div class="slds-align_absolute-center slds-p-vertical_large">
+                    <lightning-spinner alternative-text="Loading health data..." size="medium"></lightning-spinner>
+                    <p class="slds-text-body_regular slds-m-top_small">Memuat data kesehatan akun...</p>
+                </div>
+            </template>
+
+            <!-- Error State -->
+            <template if:true={error}>
+                <div class="slds-notify slds-notify_alert slds-alert_error" role="alert">
+                    <lightning-icon icon-name="utility:error" size="x-small" class="slds-m-right_x-small"></lightning-icon>
+                    <h2>Gagal memuat data kesehatan akun. Silakan coba lagi nanti.</h2>
+                </div>
+            </template>
+
+        <template if:true={healthData}>
+            <!-- Overall Score Section -->
+            <div class="score-container slds-align_absolute-center slds-text-align_center slds-m-bottom_large slds-p-around_medium">
+                <div class={overallScoreClass}>
+                    <div class="score-circle">
+                        <span class="score-number large-font">{overallScore}</span>
+                        <span class="score-percent large-font">%</span>
+                    </div>
+                    <div class="slds-m-top_small">
+                        <span class={ratingBadgeClass}>{healthRating}</span>
+                    </div>
+                    <p class="slds-text-body_small slds-text-color_weak slds-m-top_x-small large-font">
+                        Overall Health Score
+                    </p>
+                </div>
+            </div>
+
+                <!-- Metrics Grid -->
+                <lightning-layout multiple-rows="true" pull-to-boundary="small">
+                    <!-- Sales Activity -->
+                    <lightning-layout-item size="12" small-device-size="6" medium-device-size="6" large-device-size="3" padding="around-small">
+                        <div class={salesTileClass}>
+                            <div class="tile-header">
+                                <lightning-icon icon-name="utility:opportunity" size="small" class="tile-icon"></lightning-icon>
+                                <h3 class="tile-title">Aktivitas Sales</h3>
+                            </div>
+                            <div class="tile-content">
+                                <div class="metric-row">
+                                    <span class="metric-value">{healthData.openOppsCount}</span>
+                                    <span class="metric-label"> Open Opportunities</span>
+                                </div>
+                                <div class="metric-row">
+                                    <span class="metric-value">{formattedOppValue}</span>
+                                    <span class="metric-label"> Total Value</span>
+                                </div>
+                            </div>
+                        </div>
+                    </lightning-layout-item>
+
+                    <!-- Support Status -->
+                    <lightning-layout-item size="12" small-device-size="6" medium-device-size="6" large-device-size="3" padding="around-small">
+                        <div class={supportTileClass}>
+                            <div class="tile-header">
+                                <lightning-icon icon-name="utility:cases" size="small" class="tile-icon"></lightning-icon>
+                                <h3 class="tile-title">Status Support</h3>
+                            </div>
+                            <div class="tile-content">
+                                <div class="metric-row">
+                                    <span class="metric-value">{healthData.openCasesCount}</span>
+                                    <span class="metric-label"> Open Cases</span>
+                                </div>
+                                <template if:true={showCaseStatus}>
+                                    <div class="status-indicator slds-m-top_x-small">
+                                        <span class={caseStatusClass}>{caseStatusText}</span>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </lightning-layout-item>
+
+                    <!-- Engagement Level -->
+                    <lightning-layout-item size="12" small-device-size="6" medium-device-size="6" large-device-size="3" padding="around-small">
+                        <div class={engagementTileClass}>
+                            <div class="tile-header">
+                                <lightning-icon icon-name="utility:groups" size="small" class="tile-icon"></lightning-icon>
+                                <h3 class="tile-title">Engagement Level</h3>
+                            </div>
+                            <div class="tile-content">
+                                <div class="metric-row">
+                                    <span class="metric-value">{healthData.contactCount}</span>
+                                    <span class="metric-label"> Kontak Aktif</span>
+                                </div>
+                                <div class="metric-row">
+                                    <span class="metric-label">Aktivitas Terakhir:</span>
+                                    <lightning-formatted-date-time 
+                                        value={healthData.lastActivityDate}
+                                        year="numeric" 
+                                        month="short" 
+                                        day="2-digit">
+                                    </lightning-formatted-date-time>
+                                </div>
+                            </div>
+                        </div>
+                    </lightning-layout-item>
+
+                    <!-- Data Completeness -->
+                    <lightning-layout-item size="12" small-device-size="6" medium-device-size="6" large-device-size="3" padding="around-small">
+                        <div class={completenesssTileClass}>
+                            <div class="tile-header">
+                                <lightning-icon icon-name="utility:file" size="small" class="tile-icon"></lightning-icon>
+                                <h3 class="tile-title">Kelengkapan Data</h3>
+                            </div>
+                            <div class="tile-content">
+                                <div class="metric-row">
+                                    <span class="metric-value">{healthData.completenessScore}</span>
+                                    <span class="metric-label">/ 20 Poin</span>
+                                </div>
+                                <template if:true={hasMissingFields}>
+                                    <div class="missing-fields slds-m-top_small">
+                                        <details class="slds-details">
+                                            <summary class="slds-button slds-button_reset">
+                                                <lightning-icon icon-name="utility:warning" size="xx-small" class="slds-m-right_xx-small"></lightning-icon>
+                                                {missingFieldsCount} field perlu dilengkapi
+                                            </summary>
+                                            <div class="slds-m-top_x-small">
+                                                <ul class="slds-list_dotted slds-p-left_medium">
+                                                    <template for:each={healthData.missingFields} for:item="field">
+                                                        <li key={field} class="slds-text-body_small">{field}</li>
+                                                    </template>
+                                                </ul>
+                                            </div>
+                                        </details>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </lightning-layout-item>
+                </lightning-layout>
+            </template>
+        </div>
+</template>

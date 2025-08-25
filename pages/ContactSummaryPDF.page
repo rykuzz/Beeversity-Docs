@@ -1,0 +1,177 @@
+<apex:page standardController="Contact" recordSetVar="contacts" extensions="ContactSummaryController" renderAs="pdf" applyBodyTag="false">
+    <head>
+        <style type="text/css">
+            @page {
+                size: A4;
+                margin: 1.5cm;
+
+                @bottom-center {
+                    content: "Halaman " counter(page) " dari " counter(pages);
+                    font-family: 'Salesforce Sans', Arial, sans-serif;
+                    font-size: 10px;
+                    color: #555;
+                }
+            }
+
+            body {
+                font-family: 'Salesforce Sans', Arial, sans-serif;
+                font-size: 12px;
+                color: #333;
+            }
+
+            .header {
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-start;
+                border-bottom: 2px solid #0070d2; /* Salesforce Blue */
+                padding-bottom: 10px;
+                margin-bottom: 20px;
+            }
+            .header-info {
+                text-align: right;
+            }
+            .contact-name {
+                font-size: 24px;
+                font-weight: bold;
+                color: #0070d2;
+            }
+            .logo {
+                max-height: 50px;
+                max-width: 200px;
+            }
+
+            .section-title {
+                font-size: 16px;
+                font-weight: bold;
+                color: #0070d2;
+                border-bottom: 1px solid #ddd;
+                padding-bottom: 5px;
+                margin-top: 25px;
+                margin-bottom: 15px;
+            }
+            
+            .two-column-container {
+                display: flex;
+                justify-content: space-between;
+                width: 100%;
+            }
+            .column {
+                width: 48%;
+            }
+
+            .info-table {
+                width: 100%;
+                border-collapse: collapse;
+            }
+            .info-table td {
+                padding: 6px 0;
+                vertical-align: top;
+            }
+            .info-table td.label {
+                font-weight: bold;
+                width: 100px;
+            }
+            .icon {
+                font-size: 14px;
+                margin-right: 8px;
+            }
+
+            .data-table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-top: 10px;
+            }
+            .data-table th, .data-table td {
+                border: 1px solid #e0e0e0;
+                padding: 8px;
+                text-align: left;
+            }
+            .data-table th {
+                background-color: #f4f6f9;
+                font-weight: bold;
+            }
+            .no-data {
+                color: #888;
+                padding: 10px;
+                background-color: #f9f9f9;
+                border: 1px dashed #ccc;
+            }
+            .footer-info {
+                font-size: 10px;
+                color: #888;
+                text-align: right;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <div class="header-info">
+                <div class="contact-name">{!contact.Name}</div>
+                <div>Profil Kontak</div>
+                <div class="footer-info">Dibuat pada: <apex:outputText value="{0,date,dd MMMM yyyy}"><apex:param value="{!generatedDate}" /></apex:outputText></div>
+            </div>
+        </div>
+
+        <div class="section-title">Detail Kontak</div>
+        <div class="two-column-container">
+            <div class="column">
+                <table class="info-table">
+                    <tr><td class="label">Akun</td><td>: {!contact.Account.Name}</td></tr>
+                    <tr><td class="label">Jabatan</td><td>: {!contact.Title}</td></tr>
+                    <tr><td class="label">Departemen</td><td>: {!contact.Department}</td></tr>
+                </table>
+            </div>
+            <div class="column">
+                <table class="info-table">
+                    <tr><td class="label"><span class="icon">📧</span> Email</td><td>: {!contact.Email}</td></tr>
+                    <tr><td class="label"><span class="icon">📞</span> Telepon</td><td>: {!contact.Phone}</td></tr>
+                    <tr><td class="label"><span class="icon">📍</span> Alamat</td><td>: {!contact.MailingStreet}, {!contact.MailingCity}</td></tr>
+                </table>
+            </div>
+        </div>
+
+        <div class="section-title">Opportunity Terkait</div>
+        <apex:outputPanel rendered="{!hasOpportunities}">
+            <table class="data-table">
+                <thead>
+                    <tr><th>Nama Opportunity</th><th>Tahap (Stage)</th><th>Jumlah (Amount)</th><th>Tanggal Tutup</th></tr>
+                </thead>
+                <tbody>
+                    <apex:repeat value="{!relatedOpps}" var="oppRole">
+                        <tr>
+                            <td>{!oppRole.Opportunity.Name}</td>
+                            <td>{!oppRole.Opportunity.StageName}</td>
+                            <td><apex:outputText value="{0, number, currency}"><apex:param value="{!oppRole.Opportunity.Amount}" /></apex:outputText></td>
+                            <td><apex:outputText value="{0,date,dd-MM-yyyy}"><apex:param value="{!oppRole.Opportunity.CloseDate}" /></apex:outputText></td>
+                        </tr>
+                    </apex:repeat>
+                </tbody>
+            </table>
+        </apex:outputPanel>
+        <apex:outputPanel rendered="{!NOT(hasOpportunities)}">
+            <div class="no-data">Tidak ada opportunity terkait yang ditemukan.</div>
+        </apex:outputPanel>
+
+        <div class="section-title">Riwayat Kasus (Cases)</div>
+        <apex:outputPanel rendered="{!hasCases}">
+            <table class="data-table">
+                <thead>
+                    <tr><th>Nomor Kasus</th><th>Subjek</th><th>Status</th><th>Tanggal Dibuka</th></tr>
+                </thead>
+                <tbody>
+                    <apex:repeat value="{!relatedCases}" var="case">
+                        <tr>
+                            <td>{!case.CaseNumber}</td>
+                            <td>{!case.Subject}</td>
+                            <td>{!case.Status}</td>
+                            <td><apex:outputText value="{0,date,dd-MM-yyyy}"><apex:param value="{!case.CreatedDate}" /></apex:outputText></td>
+                        </tr>
+                    </apex:repeat>
+                </tbody>
+            </table>
+        </apex:outputPanel>
+        <apex:outputPanel rendered="{!NOT(hasCases)}">
+            <div class="no-data">Tidak ada riwayat kasus yang ditemukan.</div>
+        </apex:outputPanel>
+    </body>
+</apex:page>
