@@ -1,134 +1,152 @@
 @isTest
 private class InvoiceComponentControllerTest {
 
-    // Simpan ID record yang dibuat di setup untuk digunakan di metode tes
-    private static Id testOppId;
-    private static Id testContactId;
-
-    // @TestSetup membuat data uji yang kompleks sekali saja
+    /**
+     * @description Metode @TestSetup untuk membuat serangkaian data kompleks sekali saja.
+     * Data ini akan tersedia untuk semua metode tes di kelas ini.
+     */
     @TestSetup
     static void makeData() {
-        // 1. Buat data dasar
-        Account acc = new Account(Name='Test Corp Inc.');
+        // 1. Buat Akun dan Kontak
+        Account acc = new Account(Name = 'Test Account');
         insert acc;
 
-        Contact con = new Contact(LastName='Smith', AccountId=acc.Id);
+        Contact con = new Contact(LastName = 'Wijaya', AccountId = acc.Id, Email = 'test@wijaya.com');
         insert con;
 
-        Product2 prod = new Product2(Name='Test Product', IsActive=true);
-        insert prod;
+        // 2. Buat Produk dan entri Pricebook standar
+        Product2 prod1 = new Product2(Name = 'Produk A', IsActive = true);
+        Product2 prod2 = new Product2(Name = 'Produk B', IsActive = true);
+        insert new List<Product2>{prod1, prod2};
 
-        // 2. Dapatkan Pricebook standar dan buat Pricebook Entry
         Id pricebookId = Test.getStandardPricebookId();
-        PricebookEntry pbe = new PricebookEntry(
-            Pricebook2Id = pricebookId,
-            Product2Id = prod.Id,
-            UnitPrice = 1000,
-            IsActive = true
-        );
-        insert pbe;
 
-        // 3. Buat Opportunity dan produknya (OpportunityLineItem)
-        Opportunity opp = new Opportunity(
-            Name = 'Test Invoice Opp',
-            AccountId = acc.Id,
-            Pricebook2Id = pricebookId,
-            StageName = 'Prospecting',
-            CloseDate = Date.today().addMonths(1)
+        PricebookEntry pbe1 = new PricebookEntry(
+            Pricebook2Id = pricebookId, Product2Id = prod1.Id,
+            UnitPrice = 1000, IsActive = true
         );
-        insert opp;
-
-        OpportunityLineItem oli = new OpportunityLineItem(
-            OpportunityId = opp.Id,
-            PricebookEntryId = pbe.Id,
-            Quantity = 5,
-            UnitPrice = 1000
+        PricebookEntry pbe2 = new PricebookEntry(
+            Pricebook2Id = pricebookId, Product2Id = prod2.Id,
+            UnitPrice = 2500, IsActive = true
         );
-        insert oli;
+        insert new List<PricebookEntry>{pbe1, pbe2};
 
-        // 4. Tautkan Kontak ke Opportunity sebagai Kontak Utama
+        // 3. Buat Opportunity dengan semua data terkait (untuk skenario sukses)
+        Opportunity oppWithContact = new Opportunity(
+            Name = 'Opp Lengkap', AccountId = acc.Id,
+            StageName = 'Prospecting', CloseDate = Date.today().addMonths(1),
+            Pricebook2Id = pricebookId
+        );
+        insert oppWithContact;
+
         OpportunityContactRole ocr = new OpportunityContactRole(
-            OpportunityId = opp.Id,
-            ContactId = con.Id,
-            IsPrimary = true
+            OpportunityId = oppWithContact.Id, ContactId = con.Id, IsPrimary = true
         );
         insert ocr;
-
-        // Simpan ID untuk digunakan di tes lain
-        testOppId = opp.Id;
-        testContactId = con.Id;
+        
+        OpportunityLineItem oli1 = new OpportunityLineItem(
+            OpportunityId = oppWithContact.Id, PricebookEntryId = pbe1.Id,
+            Quantity = 2, UnitPrice = 1000
+        );
+        OpportunityLineItem oli2 = new OpportunityLineItem(
+            OpportunityId = oppWithContact.Id, PricebookEntryId = pbe2.Id,
+            Quantity = 5, UnitPrice = 2500
+        );
+        insert new List<OpportunityLineItem>{oli1, oli2};
+        
+        // 4. Buat Opportunity lain tanpa Kontak Utama (untuk skenario tes lain)
+        Opportunity oppWithoutContact = new Opportunity(
+            Name = 'Opp Tanpa Kontak', AccountId = acc.Id,
+            StageName = 'Prospecting', CloseDate = Date.today().addMonths(1)
+        );
+        insert oppWithoutContact;
     }
 
-    // Tes skenario sukses dengan semua data lengkap
+    /**
+     * @description Tes skenario sukses di mana Opportunity memiliki Kontak Utama dan Line Items.
+     */
     @isTest
-    static void testLoadData_Success() {
+    static void testController_HappyPath() {
+        // Arrange: Ambil ID Opportunity yang sudah lengkap dari data setup
+        Opportunity opp = [SELECT Id FROM Opportunity WHERE Name = 'Opp Lengkap' LIMIT 1];
+
         Test.startTest();
-        // Buat instance controller
+        // Act: Buat instance controller dan atur opportunityId untuk memicu pemuatan data
         InvoiceComponentController controller = new InvoiceComponentController();
-        // Atur ID, yang akan memicu pemuatan data
-        controller.opportunityId = testOppId;
+        controller.opportunityId = opp.Id;
         Test.stopTest();
 
-        // Verifikasi bahwa semua data berhasil dimuat
-        System.assertNotEquals(null, controller.opp, 'Opportunity seharusnya berhasil dimuat.');
-        System.assertEquals(testOppId, controller.opp.Id, 'ID Opportunity tidak cocok.');
-        System.assertEquals(false, controller.opp.OpportunityLineItems.isEmpty(), 'Opportunity Line Items seharusnya ada.');
-        System.assertNotEquals(null, controller.primaryContact, 'Kontak Utama seharusnya berhasil dimuat.');
-        System.assertEquals(testContactId, controller.primaryContact.Id, 'ID Kontak Utama tidak cocok.');
+        // Assert: Verifikasi bahwa semua data dimuat dengan benar
+        System.assertNotEquals(null, controller.opp, 'Objek Opportunity seharusnya tidak null.');
+        System.assertNotEquals(null, controller.primaryContact, 'Objek Kontak Utama seharusnya tidak null.');
+        System.assertEquals(opp.Id, controller.opp.Id, 'ID Opportunity yang dimuat tidak cocok.');
+        System.assertEquals('Wijaya', controller.primaryContact.LastName, 'Nama Kontak Utama tidak cocok.');
+        System.assertEquals(2, controller.opp.OpportunityLineItems.size(), 'Jumlah Opportunity Line Item seharusnya 2.');
     }
 
-    // Tes skenario di mana Opportunity tidak memiliki Kontak Utama
+    /**
+     * @description Tes skenario di mana Opportunity ada tetapi tidak memiliki Kontak Utama.
+     * Ini menguji cabang logika 'if (!roles.isEmpty())'.
+     */
     @isTest
-    static void testLoadData_NoPrimaryContact() {
-        // Buat Opportunity baru tanpa menautkan Kontak Utama
-        Opportunity oppWithoutContact = [SELECT Id FROM Opportunity WHERE Id = :testOppId];
-        
-        Test.startTest();
-        InvoiceComponentController controller = new InvoiceComponentController();
-        controller.opportunityId = oppWithoutContact.Id;
-        Test.stopTest();
-        
-        // Verifikasi bahwa Opportunity dimuat, tetapi Kontak Utama null
-        System.assertNotEquals(null, controller.opp, 'Opportunity seharusnya berhasil dimuat.');
-        // Hapus OCR agar test ini tidak terpengaruh data setup
-        delete [SELECT Id FROM OpportunityContactRole WHERE OpportunityId = :oppWithoutContact.Id];
-        // Panggil ulang
-        controller.opportunityId = oppWithoutContact.Id;
-        System.assertEquals(null, controller.primaryContact, 'Kontak Utama seharusnya null.');
-    }
+    static void testController_NoPrimaryContact() {
+        // Arrange: Ambil ID Opportunity yang tidak memiliki kontak
+        Opportunity opp = [SELECT Id FROM Opportunity WHERE Name = 'Opp Tanpa Kontak' LIMIT 1];
 
-    // Tes untuk memastikan query tidak dijalankan berulang kali
-    @isTest
-    static void testLazyLoading() {
-        InvoiceComponentController controller = new InvoiceComponentController();
-        
         Test.startTest();
-        // Panggilan pertama, data akan dimuat dan query akan berjalan
-        controller.opportunityId = testOppId;
-        
-        Integer queriesAfterFirstCall = Limits.getQueries();
-        
-        // Panggilan kedua dengan ID yang sama
-        controller.opportunityId = testOppId;
-        
-        Integer queriesAfterSecondCall = Limits.getQueries();
+        // Act: Atur ID pada controller
+        InvoiceComponentController controller = new InvoiceComponentController();
+        controller.opportunityId = opp.Id;
         Test.stopTest();
 
-        // Verifikasi tidak ada query tambahan yang berjalan pada panggilan kedua
-        System.assertEquals(queriesAfterFirstCall, queriesAfterSecondCall, 'Seharusnya tidak ada query SOQL tambahan pada panggilan kedua.');
+        // Assert: Verifikasi bahwa Opportunity dimuat tetapi Kontak Utama null
+        System.assertNotEquals(null, controller.opp, 'Objek Opportunity seharusnya dimuat.');
+        System.assertEquals(null, controller.primaryContact, 'Objek Kontak Utama seharusnya null karena tidak ada.');
     }
     
-    // Tes penanganan error ketika ID tidak valid
+    /**
+     * @description Tes skenario di mana ID yang diberikan tidak valid (tidak ada di database).
+     * Ini menguji penanganan hasil query kosong dan perilaku blok 'catch'.
+     */
     @isTest
-    static void testLoadData_ExceptionHandling() {
+    static void testController_InvalidId() {
         Test.startTest();
+        // Act: Atur ID palsu pada controller
         InvoiceComponentController controller = new InvoiceComponentController();
-        // Atur dengan ID yang tidak ada di database
-        controller.opportunityId = '006000000000000AAA';
+        controller.opportunityId = '006000000000000AAA'; // ID yang tidak ada
         Test.stopTest();
+
+        // Assert: Verifikasi bahwa properti tetap null, seperti yang diharapkan setelah query gagal atau blok catch.
+        System.assertEquals(null, controller.opp, 'Objek Opportunity seharusnya null untuk ID yang tidak valid.');
+        System.assertEquals(null, controller.primaryContact, 'Objek Kontak Utama seharusnya null untuk ID yang tidak valid.');
+    }
+
+    /**
+     * @description Tes logika efisiensi untuk memastikan query tidak dijalankan ulang jika ID yang sama diatur lagi.
+     */
+    @isTest
+    static void testController_SetIdTwice() {
+        // Arrange
+        Opportunity opp = [SELECT Id FROM Opportunity WHERE Name = 'Opp Lengkap' LIMIT 1];
+        InvoiceComponentController controller = new InvoiceComponentController();
         
-        // Verifikasi bahwa properti menjadi null setelah error
-        System.assertEquals(null, controller.opp, 'Opportunity seharusnya null setelah terjadi error.');
-        System.assertEquals(null, controller.primaryContact, 'Kontak Utama seharusnya null setelah terjadi error.');
+        // Act (First time)
+        controller.opportunityId = opp.Id;
+        
+        // Assert (First time)
+        System.assertNotEquals(null, controller.opp, 'Data seharusnya dimuat pada panggilan pertama.');
+
+        Test.startTest();
+        // Hitung jumlah query SOQL sebelum mengatur ID untuk kedua kalinya
+        Integer queriesBefore = Limits.getQueries();
+        
+        // Act (Second time)
+        controller.opportunityId = opp.Id; // Atur ID yang sama lagi
+        
+        Integer queriesAfter = Limits.getQueries();
+        Test.stopTest();
+
+        // Assert (Second time)
+        System.assertEquals(0, queriesAfter - queriesBefore, 'Seharusnya tidak ada query SOQL baru yang dijalankan saat mengatur ID yang sama lagi.');
     }
 }
