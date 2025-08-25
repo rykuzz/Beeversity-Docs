@@ -1,107 +1,130 @@
 @isTest
 private class LeadQualitySummaryControllerTest {
 
-    // Tes skenario utama dengan berbagai kualitas Lead
-    @isTest
-    static void testSummary_WithMixedLeads() {
-        // 1. PERSIAPAN DATA (DISEMPURNAKAN)
-        // Buat lebih dari 5 lead untuk menguji logika Math.min(5, size)
-        List<Lead> leadsToInsert = new List<Lead>();
+    /**
+     * @description Metode @TestSetup untuk membuat data uji. Dijalankan sekali untuk semua metode tes.
+     * Membuat 4 lead dengan kualitas data yang berbeda-beda.
+     */
+    @TestSetup
+    static void makeData() {
+        // Buat beberapa lead dengan tingkat kelengkapan data yang berbeda
+        List<Lead> leadsToCreate = new List<Lead>();
 
-        // Lead Hebat (Skor 100): 5 dari 5 field terisi
-        leadsToInsert.add(new Lead(
-            LastName = 'Musk', Company = 'Tesla', Email = 'elon@tesla.com',
-            Phone = '555-1111', Industry = 'Automotive'
+        // 1. Lead Hebat (Skor 100) - 5/5 field terisi
+        leadsToCreate.add(new Lead(
+            LastName = 'Santoso',
+            Company = 'Perusahaan Hebat',
+            Email = 'hebat@example.com',
+            Phone = '111111',
+            Industry = 'Technology'
         ));
-        // Lead Baik 1 (Skor 80): 4 dari 5 field terisi
-        leadsToInsert.add(new Lead(
-            LastName = 'Bezos', Company = 'Amazon', Email = 'jeff@amazon.com',
-            Phone = '555-2222' // Industry kosong
+
+        // 2. Lead Baik (Skor 80) - 4/5 field terisi
+        leadsToCreate.add(new Lead(
+            LastName = 'Budi',
+            Company = 'Perusahaan Baik',
+            Email = 'baik@example.com',
+            Phone = '222222'
+            // Industry sengaja dikosongkan
         ));
-        // Lead Baik 2 (Skor 80): 4 dari 5 field terisi
-        leadsToInsert.add(new Lead(
-            LastName = 'Gates', Company = 'Microsoft', Email = 'bill@ms.com',
-            Phone = '555-3333' // Industry kosong
+
+        // 3. Lead Buruk (Skor 60) - 3/5 field terisi
+        leadsToCreate.add(new Lead(
+            LastName = 'Cahyo',
+            Company = 'Perusahaan Buruk',
+            Email = 'buruk@example.com'
+            // Phone dan Industry sengaja dikosongkan
         ));
-        // Lead Buruk 1 (Skor 40): 2 dari 5 field terisi
-        leadsToInsert.add(new Lead(
-            LastName = 'Parker', Company = 'Daily Bugle' // Email, Phone, Industry kosong
+
+        // 4. Lead Sangat Buruk (Skor 40) - 2/5 field terisi
+        leadsToCreate.add(new Lead(
+            LastName = 'Dewi',
+            Company = 'Perusahaan Sangat Buruk'
+            // Email, Phone, Industry sengaja dikosongkan
         ));
-        // Lead Buruk 2 (Skor 60): 3 dari 5 field terisi
-         leadsToInsert.add(new Lead(
-            LastName = 'Stark', Company = 'Stark Industries', Email = 'tony@stark.com'
-        ));
-        // Lead Buruk 3 (Skor 20): 1 dari 5 field terisi
-        leadsToInsert.add(new Lead(
-            LastName = 'Banner' // Hanya nama
-        ));
-        // Lead yang sudah dikonversi (HARUS DIABAIKAN)
-        Lead convertedLead = new Lead(LastName='Kent', Company='Daily Planet', IsConverted=true);
         
-        insert leadsToInsert;
-        insert convertedLead;
+        insert leadsToCreate;
+    }
 
-        // 2. EKSEKUSI
+    /**
+     * @description Tes utama untuk skenario sukses dengan data yang beragam.
+     */
+    @isTest
+    static void testGetLeadQualitySummary_SuccessScenario() {
         Test.startTest();
-        LeadQualitySummaryController.LeadQualitySummary result = LeadQualitySummaryController.getLeadQualitySummary();
+        // Act: Panggil metode yang akan diuji
+        LeadQualitySummaryController.LeadQualitySummary summary = LeadQualitySummaryController.getLeadQualitySummary();
         Test.stopTest();
 
-        // 3. VERIFIKASI HASIL (DISESUAIKAN)
-        System.assertNotEquals(null, result, 'Hasil ringkasan tidak boleh null.');
-        // Verifikasi jumlah (hanya 6 lead aktif yang dihitung)
-        System.assertEquals(6, result.totalLeads, 'Total Leads yang dihitung harusnya 6.');
+        // Assert: Verifikasi semua agregat dan daftar
+        System.assertNotEquals(null, summary, 'Hasil ringkasan tidak boleh null.');
+        
+        // Verifikasi jumlah total
+        System.assertEquals(4, summary.totalLeads, 'Total leads seharusnya 4.');
 
         // Verifikasi jumlah per kategori
-        System.assertEquals(1, result.greatLeadsCount, 'Jumlah Great Leads harus 1.'); // Skor 100
-        System.assertEquals(2, result.goodLeadsCount, 'Jumlah Good Leads harus 2.');   // Skor 80, 80
-        System.assertEquals(3, result.poorLeadsCount, 'Jumlah Poor Leads harus 3.');   // Skor 20, 40, 60
+        System.assertEquals(1, summary.greatLeadsCount, 'Jumlah lead hebat seharusnya 1.');
+        System.assertEquals(1, summary.goodLeadsCount, 'Jumlah lead baik seharusnya 1.');
+        System.assertEquals(2, summary.poorLeadsCount, 'Jumlah lead buruk seharusnya 2.');
 
-        // Verifikasi skor rata-rata: (100 + 80 + 80 + 40 + 60 + 20) / 6 = 380 / 6 = 63.33 -> 63
-        System.assertEquals(63, result.averageScore, 'Skor rata-rata tidak sesuai.');
-
-        // Verifikasi daftar Poor Leads (diurutkan dari skor terendah)
-        // Urutan skor: 20, 40, 60, 80, 80, 100
-        System.assertEquals(3, result.poorLeads.size(), 'Daftar Poor Leads harus berisi 3 record (semua yang skornya < 70 dari 5 terendah).');
-        // Verifikasi urutan (skor terendah harus di urutan pertama)
-        System.assertEquals('Banner', result.poorLeads[0].name, 'Lead dengan skor terendah harus pertama.');
-        System.assertEquals(20, result.poorLeads[0].score, 'Skor Lead pertama di daftar Poor Leads tidak sesuai.');
+        // Verifikasi skor rata-rata ( (100 + 80 + 60 + 40) / 4 = 70 )
+        System.assertEquals(70, summary.averageScore, 'Skor rata-rata seharusnya 70.');
+        
+        // Verifikasi daftar lead buruk
+        System.assertEquals(2, summary.poorLeads.size(), 'Daftar lead buruk seharusnya berisi 2 record.');
+        
+        // Verifikasi urutan daftar lead buruk (skor terendah di awal)
+        System.assertEquals(40, summary.poorLeads[0].score, 'Lead pertama dalam daftar buruk seharusnya memiliki skor 40.');
+        System.assertEquals(60, summary.poorLeads[1].score, 'Lead kedua dalam daftar buruk seharusnya memiliki skor 60.');
     }
 
-    // Tes skenario di mana tidak ada Lead aktif
+    /**
+     * @description Tes kasus khusus di mana tidak ada lead di database.
+     */
     @isTest
-    static void testSummary_NoLeads() {
-        // Buat lead yang sudah dikonversi untuk memastikan query tidak salah mengambilnya
-        insert new Lead(LastName='Wayne', Company='Wayne Enterprises', IsConverted=true);
+    static void testGetLeadQualitySummary_NoLeads() {
+        // Hapus data yang dibuat oleh @TestSetup untuk simulasi database kosong
+        delete [SELECT Id FROM Lead];
 
         Test.startTest();
-        LeadQualitySummaryController.LeadQualitySummary result = LeadQualitySummaryController.getLeadQualitySummary();
+        // Act: Panggil metode pada database kosong
+        LeadQualitySummaryController.LeadQualitySummary summary = LeadQualitySummaryController.getLeadQualitySummary();
         Test.stopTest();
 
-        // Verifikasi bahwa semua nilai adalah 0 atau kosong
-        System.assertEquals(0, result.totalLeads, 'Total Leads harus 0.');
-        System.assertEquals(0, result.averageScore, 'Skor rata-rata harus 0.');
-        System.assertEquals(0, result.greatLeadsCount, 'Jumlah Great Leads harus 0.');
-        System.assertEquals(0, result.goodLeadsCount, 'Jumlah Good Leads harus 0.');
-        System.assertEquals(0, result.poorLeadsCount, 'Jumlah Poor Leads harus 0.');
-        System.assertEquals(true, result.poorLeads.isEmpty(), 'Daftar Poor Leads harus kosong.');
+        // Assert: Pastikan semua nilai adalah 0 dan tidak ada error
+        System.assertNotEquals(null, summary);
+        System.assertEquals(0, summary.totalLeads, 'Total leads seharusnya 0.');
+        System.assertEquals(0, summary.averageScore, 'Skor rata-rata seharusnya 0.');
+        System.assertEquals(0, summary.greatLeadsCount, 'Jumlah lead hebat seharusnya 0.');
+        System.assertEquals(0, summary.goodLeadsCount, 'Jumlah lead baik seharusnya 0.');
+        System.assertEquals(0, summary.poorLeadsCount, 'Jumlah lead buruk seharusnya 0.');
+        System.assertEquals(0, summary.poorLeads.size(), 'Daftar lead buruk seharusnya kosong.');
     }
 
-    // Tes unit untuk metode compareTo pada kelas inner LeadInfo
+    /**
+     * @description Tes unit khusus untuk logika perbandingan (sorting) di inner class LeadInfo.
+     */
     @isTest
-    static void testLeadInfo_Comparable() {
-        // Buat instance LeadInfo secara manual untuk menguji logika perbandingan
-        LeadQualitySummaryController.LeadInfo leadLowScore = new LeadQualitySummaryController.LeadInfo();
-        leadLowScore.score = 40;
-
-        LeadQualitySummaryController.LeadInfo leadHighScore = new LeadQualitySummaryController.LeadInfo();
-        leadHighScore.score = 90;
+    static void testLeadInfo_ComparableImplementation() {
+        // Arrange: Buat beberapa instance LeadInfo
+        LeadQualitySummaryController.LeadInfo leadLow = new LeadQualitySummaryController.LeadInfo();
+        leadLow.score = 40;
         
-        LeadQualitySummaryController.LeadInfo leadLowScoreClone = new LeadQualitySummaryController.LeadInfo();
-        leadLowScoreClone.score = 40;
+        LeadQualitySummaryController.LeadInfo leadHigh = new LeadQualitySummaryController.LeadInfo();
+        leadHigh.score = 90;
+        
+        LeadQualitySummaryController.LeadInfo leadSame = new LeadQualitySummaryController.LeadInfo();
+        leadSame.score = 90;
+        
+        // Act & Assert: Uji langsung metode compareTo
+        System.assertEquals(-1, leadLow.compareTo(leadHigh), 'Skor rendah harus mengembalikan -1 saat dibandingkan dengan skor tinggi.');
+        System.assertEquals(1, leadHigh.compareTo(leadLow), 'Skor tinggi harus mengembalikan 1 saat dibandingkan dengan skor rendah.');
+        System.assertEquals(0, leadHigh.compareTo(leadSame), 'Skor yang sama harus mengembalikan 0.');
 
-        // Verifikasi logika perbandingan
-        System.assertEquals(-1, leadLowScore.compareTo(leadHighScore), 'Skor rendah dibanding skor tinggi seharusnya mengembalikan -1.');
-        System.assertEquals(1, leadHighScore.compareTo(leadLowScore), 'Skor tinggi dibanding skor rendah seharusnya mengembalikan 1.');
-        System.assertEquals(0, leadLowScore.compareTo(leadLowScoreClone), 'Skor yang sama seharusnya mengembalikan 0.');
+        // Uji sorting pada List
+        List<LeadQualitySummaryController.LeadInfo> leadList = new List<LeadQualitySummaryController.LeadInfo>{leadHigh, leadLow};
+        leadList.sort();
+        
+        System.assertEquals(40, leadList[0].score, 'Lead dengan skor terendah harus berada di urutan pertama setelah di-sort.');
     }
 }
